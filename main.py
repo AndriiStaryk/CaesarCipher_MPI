@@ -1,5 +1,7 @@
 from mpi4py import MPI
+from pdf_manager import extract_text_from_pdf, create_multi_page_pdf_from_text
 
+# _-_-_-_-_-_-_-_-_-_-_-_- Caesar Cipher _-_-_-_-_-_-_-_-_-_-_-_-
 alphabet_upper = "АБВГҐДЕЄЖЗИІЇЙКЛМНОПРСТУФХЦЧШЩЬЮЯ"
 alphabet_lower = alphabet_upper.lower()
 alphabet_len = len(alphabet_upper)
@@ -20,33 +22,32 @@ def caesar_shift(text, shift):
 def caesar_encrypt(text_chunk, shift):
     return ''.join(caesar_shift(char, shift) for char in text_chunk)
 
-# --- MPI setup ---
+# _-_-_-_-_-_-_-_-_-_-_-_- MPI Setup _-_-_-_-_-_-_-_-_-_-_-_-
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = comm.Get_size()
 
-# Тільки головний процес вводить текст
+# Only the main process enters the text
 if rank == 0:
-    text = "Привіт, як справи? Це тест шифру Цезаря для української мови!"
-    shift = 3
+    text = extract_text_from_pdf("cipher_test.pdf")
+    shift = 33
 
-    # Ділимо текст на рівні частини
+    # Divide the text into equal parts
     chunk_size = len(text) // size
     chunks = [text[i*chunk_size : (i+1)*chunk_size] for i in range(size)]
 
-    # останній процес отримає залишок
+    # The last process gets the remainder
     if len(text) % size != 0:
         chunks[-1] += text[size*chunk_size:]
 else:
     chunks = None
     shift = None
 
-
-shift = comm.bcast(shift, root=0)                   # Розсилка зсуву всім процесам
-chunk = comm.scatter(chunks, root=0)                # Розсилка частин тексту всім процесам
-encrypted_chunk = caesar_encrypt(chunk, shift)      # Кожен процес шифрує свою частину
-gathered = comm.gather(encrypted_chunk, root=0)     # Збір результатів
+shift = comm.bcast(shift, root=0)                   # Broadcast the shift value to all processes
+chunk = comm.scatter(chunks, root=0)                # Scatter text chunks to all processes
+encrypted_chunk = caesar_encrypt(chunk, shift)      # Each process encrypts its own chunk
+gathered = comm.gather(encrypted_chunk, root=0)     # Gather the encrypted results
 
 if rank == 0:
     encrypted_text = ''.join(gathered)
-    print("Зашифровано:", encrypted_text)
+    create_multi_page_pdf_from_text(encrypted_text, "encrypted_text.pdf", "e-Ukraine-Medium.otf")
