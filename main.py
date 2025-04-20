@@ -1,36 +1,21 @@
 from mpi4py import MPI
+from caesar import caesar_encrypt
 from pdf_manager import extract_text_from_pdf, create_multi_page_pdf_from_text
+import time
 
-# _-_-_-_-_-_-_-_-_-_-_-_- Caesar Cipher _-_-_-_-_-_-_-_-_-_-_-_-
-alphabet_upper = "АБВГҐДЕЄЖЗИІЇЙКЛМНОПРСТУФХЦЧШЩЬЮЯ"
-alphabet_lower = alphabet_upper.lower()
-alphabet_len = len(alphabet_upper)
-
-def caesar_shift(text, shift):
-    for char in text:
-        if char in alphabet_upper:
-            index = alphabet_upper.index(char)
-            new_index = (index + shift) % alphabet_len
-            return alphabet_upper[new_index]
-        elif char in alphabet_lower:
-            index = alphabet_lower.index(char)
-            new_index = (index + shift) % alphabet_len
-            return alphabet_lower[new_index]
-        else:
-            return char
-        
-def caesar_encrypt(text_chunk, shift):
-    return ''.join(caesar_shift(char, shift) for char in text_chunk)
 
 # _-_-_-_-_-_-_-_-_-_-_-_- MPI Setup _-_-_-_-_-_-_-_-_-_-_-_-
+
+start_time = time.time()
+
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = comm.Get_size()
 
 # Only the main process enters the text
 if rank == 0:
-    text = extract_text_from_pdf("cipher_test.pdf")
-    shift = 33
+    text = extract_text_from_pdf("harry_potter_merged.pdf")
+    shift = 12
 
     # Divide the text into equal parts
     chunk_size = len(text) // size
@@ -43,11 +28,19 @@ else:
     chunks = None
     shift = None
 
+encryption_start_time = time.time()
+
 shift = comm.bcast(shift, root=0)                   # Broadcast the shift value to all processes
 chunk = comm.scatter(chunks, root=0)                # Scatter text chunks to all processes
 encrypted_chunk = caesar_encrypt(chunk, shift)      # Each process encrypts its own chunk
 gathered = comm.gather(encrypted_chunk, root=0)     # Gather the encrypted results
 
+encryption_end_time = time.time()
+encryption_time_taken = encryption_end_time - encryption_start_time
+
 if rank == 0:
     encrypted_text = ''.join(gathered)
+    print(f"Encryption time taken: {encryption_time_taken} seconds")
     create_multi_page_pdf_from_text(encrypted_text, "encrypted_text.pdf", "e-Ukraine-Medium.otf")
+    total_time_taken = time.time() - start_time
+    print(f"Total time taken: {total_time_taken} seconds")
