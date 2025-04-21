@@ -16,7 +16,7 @@ size = comm.Get_size()
 input_pdf = "harry_potter_merged.pdf"
 output_pdf = "encrypted_text.pdf"
 font_path = "e-Ukraine-Medium.otf"
-shift = 33
+shift = 11
 
 # Get document info
 if rank == 0:
@@ -48,7 +48,7 @@ encryption_time = time.time() - encryption_start_time
 # Each process creates its own PDF portion
 temp_pdf_path = f"temp_encrypted_{rank}.pdf"
 io_write_start_time = time.time()
-pages_created = create_pdf_from_text_chunk(encrypted_chunk, temp_pdf_path, start_page, font_path)
+pages_created = create_pdf_from_text_chunk(encrypted_chunk, temp_pdf_path, font_path)
 io_write_time = time.time() - io_write_start_time
 
 # Collect timing stats from all processes

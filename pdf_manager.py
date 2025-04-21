@@ -12,7 +12,7 @@ def extract_text_from_pdf_parallel(pdf_path, start_page, end_page):
 
 
 def create_pdf_from_text_chunk(text, output_path, font_path=None):
-    """Create a PDF with a chunk of text starting at page_start_num"""
+    """Create a PDF with a chunk of text"""
     doc = fitz.open()
     
     # Set up page parameters
@@ -41,7 +41,6 @@ def create_pdf_from_text_chunk(text, output_path, font_path=None):
             y_pos = margin + line_num * line_height
             tw.append((margin, y_pos), line, font=font, fontsize=font_size)
         
-        # Commit the text to the page
         tw.write_text(page)
     
     doc.save(output_path)
